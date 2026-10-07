@@ -1,0 +1,74 @@
+# title: Yazi
+# Yazi defaults (press F1 or ~ inside yazi for the live list). keys<TAB>description<TAB>section
+k / ↑	Move up	Navigation
+j / ↓	Move down	Navigation
+h / ←	Go to parent directory	Navigation
+l / →	Enter directory / open	Navigation
+H	Back (previous directory)	Navigation
+L	Forward (next directory)	Navigation
+gg	Go to top	Navigation
+G	Go to bottom	Navigation
+Ctrl+u / Ctrl+d	Half page up / down	Navigation
+Ctrl+b / Ctrl+f	Full page up / down	Navigation
+K / J	Scroll preview up / down	Navigation
+g h	Go home (~)	Goto
+g c	Go to ~/.config	Goto
+g d	Go to ~/Downloads	Goto
+g Space	Go to a directory interactively	Goto
+z	Jump with fzf	Goto
+Z	Jump with zoxide	Goto
+Space	Toggle selection	Selection
+Ctrl+a	Select all	Selection
+Ctrl+r	Invert selection	Selection
+v	Visual (select) mode	Selection
+V	Visual (unselect) mode	Selection
+Esc	Cancel selection / exit mode	Selection
+o / Enter	Open	Files
+O / Shift+Enter	Open interactively (choose app)	Files
+y	Yank (copy) selected	Files
+x	Cut selected	Files
+p	Paste	Files
+P	Paste (overwrite)	Files
+Y / X	Cancel yank / cut	Files
+-	Symlink (absolute path)	Files
+_	Symlink (relative path)	Files
+d	Move to trash	Files
+D	Delete permanently	Files
+a	Create file (end with / for a directory)	Files
+r	Rename (bulk rename when several selected)	Files
+.	Toggle hidden files	Files
+Tab	Show file info (spot)	Files
+;	Run shell command	Shell
+:	Run shell command (blocking)	Shell
+c c	Copy file path	Copy
+c d	Copy directory path	Copy
+c f	Copy file name	Copy
+c n	Copy name without extension	Copy
+f	Filter files	Search
+/	Find next (incremental)	Search
+?	Find previous (incremental)	Search
+n / N	Next / previous match	Search
+s	Search names (fd)	Search
+S	Search contents (ripgrep)	Search
+Ctrl+s	Cancel search	Search
+, m / , M	Sort by modified (rev)	Sort
+, b / , B	Sort by created (rev)	Sort
+, a / , A	Sort alphabetically (rev)	Sort
+, n / , N	Sort naturally (rev)	Sort
+, s / , S	Sort by size (rev)	Sort
+, e / , E	Sort by extension (rev)	Sort
+m s	Show size column	Linemode
+m p	Show permissions column	Linemode
+m m	Show modified time column	Linemode
+m o	Show owner column	Linemode
+m n	Hide the extra column	Linemode
+t	New tab	Tabs
+1 … 9	Switch to tab N	Tabs
+[ / ]	Previous / next tab	Tabs
+{ / }	Swap tab left / right	Tabs
+Ctrl+c	Close tab	Tabs
+w	Show task manager	App
+F1 / ~	Help (searchable)	App
+q	Quit (cd to last dir)	App
+Q	Quit without changing dir	App
+Ctrl+z	Suspend	App

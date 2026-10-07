@@ -1,0 +1,12 @@
+# title: Zen Browser
+# Extras that are not in zen-keyboard-shortcuts.json. The rest is read live from the profile.
+Alt+Click	Open link in Glance (floating preview)	Mouse & gestures
+Ctrl+Click tab	Select several tabs (then right-click → Split)	Mouse & gestures
+Ctrl+L	Focus address bar	Navigation
+Ctrl+Tab / Ctrl+Shift+Tab	Next / previous tab	Window & Tab Management
+Ctrl+PageDown / Ctrl+PageUp	Next / previous tab	Window & Tab Management
+Ctrl+Shift+PageUp/Down	Move tab left / right	Window & Tab Management
+Ctrl+Shift+I	Developer tools	Developer
+Ctrl+Shift+K	Web console	Developer
+Ctrl+Shift+M	Responsive design mode	Developer
+F12	Developer tools	Developer

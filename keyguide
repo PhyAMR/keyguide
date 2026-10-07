@@ -1,0 +1,309 @@
+#!/usr/bin/env python3
+"""Searchable keybinding guide for desktop apps (Super+Shift+K).
+
+  keyguide                 open the guide for the focused app, else the app picker
+  keyguide <app>           open one app's guide (yazi, bookokrat, zen, ...)
+  keyguide --pick          always start at the app picker
+  keyguide --all           every app's bindings in one searchable list
+  keyguide --list          list known apps
+  keyguide --print [app]   print to the terminal instead of the menu
+
+Sources, per app:
+  ~/.config/keyguides/<app>.tsv   hand-written guide: keys<TAB>description[<TAB>section]
+                                  ('#' comments; first '# title: ...' names the app)
+  live parsers                    bookokrat (--print-default-keybindings + keybindings.toml),
+                                  zen (the profile's zen-keyboard-shortcuts.json),
+                                  yazi (adds ~/.config/yazi/keymap.toml entries with a desc)
+Drop a new <app>.tsv in ~/.config/keyguides and it shows up in the picker.
+"""
+import configparser, glob, json, os, re, subprocess, sys
+
+HOME = os.path.expanduser("~")
+GUIDES = os.path.join(HOME, ".config", "keyguides")
+ALL = "All apps"
+
+
+def tsv_rows(app):
+    path = os.path.join(GUIDES, f"{app}.tsv")
+    rows = []
+    if not os.path.exists(path):
+        return rows
+    for line in open(path, encoding="utf-8"):
+        line = line.rstrip("\n")
+        if not line.strip() or line.startswith("#"):
+            continue
+        parts = line.split("\t")
+        if len(parts) >= 2:
+            rows.append((parts[0], parts[1], parts[2] if len(parts) > 2 else ""))
+    return rows
+
+
+def tsv_title(app):
+    path = os.path.join(GUIDES, f"{app}.tsv")
+    if os.path.exists(path):
+        for line in open(path, encoding="utf-8"):
+            m = re.match(r"#\s*title:\s*(.+)", line)
+            if m:
+                return m.group(1).strip()
+    return app.capitalize()
+
+
+# ---- bookokrat: the live default keymap plus keybindings.toml overrides ---
+BOOKOKRAT_SECTIONS = {
+    "global": "Global", "pdf_standard": "PDF", "pdf_normal": "PDF normal mode",
+    "all": "Everywhere", "normal": "Normal modes", "navigation": "Sidebar / TOC",
+}
+BOOKOKRAT_EXTRA = [  # features of the local fork and the notes setup
+    ("Click a link", "Preview its destination (equation, figure, table)", "Notes & link preview"),
+    ("Enter / click preview", "Go to the previewed destination", "Notes & link preview"),
+    ("j / k / wheel", "Scroll the preview", "Notes & link preview"),
+    ("Esc / q / click outside", "Close the preview", "Notes & link preview"),
+    ("Space l (on a selection)", "Quote the selection into the PDF's note", "Notes & link preview"),
+    ("Super Alt O", "Open the note for this PDF", "Notes & link preview"),
+    ("Ctrl o / Ctrl i", "Jump back / forward", "Notes & link preview"),
+]
+
+
+def bookokrat_key(k):
+    k = k.replace("<Space>", "Space ").replace("<CR>", "Enter").replace("<Esc>", "Esc")
+    k = k.replace("<lt>", "<").replace("<gt>", ">")
+    k = re.sub(r"<C-(.)>", lambda m: "Ctrl " + m.group(1), k)
+    k = re.sub(r"<S-(\w+)>", lambda m: "Shift " + m.group(1), k)
+    return re.sub(r"<(\w+)>", lambda m: m.group(1), k).strip()
+
+
+def bookokrat_rows():
+    try:
+        out = subprocess.run(["bookokrat", "--print-default-keybindings"],
+                             capture_output=True, text=True).stdout
+    except FileNotFoundError:
+        return list(BOOKOKRAT_EXTRA)
+    binds = {}  # (context, key) -> description
+    for line in out.splitlines():
+        m = re.match(r'^(\w+)\."(.+?)"\s*=\s*"(\w+)"\s*#\s*(.*)$', line)
+        if m and m.group(1) in BOOKOKRAT_SECTIONS:
+            binds[(m.group(1), m.group(2))] = m.group(4)
+    path = os.path.join(HOME, ".config/bookokrat/keybindings.toml")
+    if os.path.exists(path):
+        try:
+            import tomllib
+            for ctx, table in tomllib.load(open(path, "rb")).items():
+                for key, action in (table.items() if isinstance(table, dict) else []):
+                    if ctx in BOOKOKRAT_SECTIONS:
+                        if action == "nop":
+                            binds.pop((ctx, key), None)
+                        else:
+                            binds[(ctx, key)] = action.replace("_", " ").capitalize() + " (custom)"
+        except Exception:
+            pass
+    order = list(BOOKOKRAT_SECTIONS)
+    rows = [(bookokrat_key(k), d, BOOKOKRAT_SECTIONS[c])
+            for (c, k), d in sorted(binds.items(), key=lambda i: order.index(i[0][0]))]
+    return BOOKOKRAT_EXTRA + rows
+
+
+# ---- zen: the profile's live shortcut table --------------------------------
+def zen_profiles():
+    ini_path = os.path.join(HOME, ".config/zen/profiles.ini")
+    ini = configparser.ConfigParser(interpolation=None)
+    ini.read(ini_path)
+    out = []
+    for s in ini.sections():
+        p = ini[s].get("Path")
+        if p:
+            out.append(os.path.join(HOME, ".config/zen", p) if ini[s].get("IsRelative", "1") == "1" else p)
+    return out
+
+
+def zen_rows():
+    files = [os.path.join(p, "zen-keyboard-shortcuts.json") for p in zen_profiles()]
+    files = [f for f in files if os.path.exists(f)]
+    if not files:
+        return tsv_rows("zen")
+    data = json.load(open(max(files, key=os.path.getmtime)))
+    rows, seen = [], set()
+    for s in data.get("shortcuts", []):
+        if s.get("disabled") or s.get("internal"):
+            continue
+        key = s.get("key") or (s.get("keycode") or "").replace("VK_", "")
+        if not key:
+            continue
+        m = s.get("modifiers", {})
+        mods = [n for f, n in (("accel", "Ctrl"), ("control", "Ctrl"), ("alt", "Alt"),
+                               ("shift", "Shift"), ("meta", "Super")) if m.get(f)]
+        mods = list(dict.fromkeys(mods))
+        keys = "+".join(mods + [key.upper() if len(key) == 1 else key.capitalize()])
+        l10n, action, sid = s.get("l10nId") or "", s.get("action") or "", s.get("id") or ""
+        if l10n:
+            words = [w for w in re.sub(r"^zen-(text-action-)?", "", l10n).split("-") if w != "shortcut"]
+            while words and re.fullmatch(r"alt\d?|a|b|other", words[-1]):
+                words.pop()
+            name = " ".join(words)
+        elif action:
+            name = re.sub(r"([a-z])([A-Z])", r"\1 \2", action.split(":")[-1].replace("cmd_", "")).lower()
+        elif sid:
+            name = re.sub(r"([a-z])([A-Z0-9])", r"\1 \2", re.sub(r"^(key_|zen-)", "", sid).replace("Kb", "")).replace("-", " ").lower()
+        else:
+            continue
+        if action.startswith("cmd_handle"):
+            continue
+        name = re.sub(r"^nav ", "", name.strip()).replace(" fwd", " forward").replace("fwd", "forward")
+        name = {"tab new": "new tab", "window new": "new window", "close": "close window"}.get(name, name)
+        name = name[:1].upper() + name[1:]
+        group = re.sub(r"([a-z])([A-Z])", r"\1 \2", s.get("group") or "other")
+        group = re.sub(r"^zen-", "Zen ", group).replace("-", " ").replace("And", "&").title()
+        if (keys, name) in seen:
+            continue
+        seen.add((keys, name))
+        rows.append((keys, name, group))
+    # Hand-written extras (mouse gestures, glance, ...) live in zen.tsv.
+    have = {k for k, _, _ in rows}
+    return rows + [r for r in tsv_rows("zen") if r[0] not in have]
+
+
+# ---- yazi: curated defaults plus any desc'd entries in keymap.toml -------
+def yazi_rows():
+    rows = []
+    path = os.path.join(HOME, ".config/yazi/keymap.toml")
+    if os.path.exists(path):
+        try:
+            import tomllib
+            km = tomllib.load(open(path, "rb"))
+            for layer, conf in km.items():
+                for k in ("prepend_keymap", "keymap", "append_keymap"):
+                    for e in conf.get(k, []) if isinstance(conf, dict) else []:
+                        on = e.get("on")
+                        on = " ".join(on) if isinstance(on, list) else on
+                        if on and e.get("desc"):
+                            rows.append((on, e["desc"], f"Custom ({layer})"))
+        except Exception:
+            pass
+    return rows + tsv_rows("yazi")
+
+
+LIVE = {"bookokrat": bookokrat_rows, "zen": zen_rows, "yazi": yazi_rows}
+TITLES = {"bookokrat": "Bookokrat (PDF)", "zen": "Zen Browser", "yazi": "Yazi"}
+ICONS = {"bookokrat": "", "zen": "󰈹", "yazi": "󰉋", "lazygit": "", "mpv": "", "imv": "",
+         "nvim": "", "obsidian": "󰠮"}
+
+
+def apps():
+    names = set(LIVE) | {os.path.basename(p)[:-4] for p in glob.glob(os.path.join(GUIDES, "*.tsv"))}
+    return sorted(names)
+
+
+def rows_for(app):
+    rows = LIVE[app]() if app in LIVE else tsv_rows(app)
+    # Group by section, keeping sections and rows in first-seen order.
+    order = {}
+    for _, _, sec in rows:
+        order.setdefault(sec, len(order))
+    return sorted(rows, key=lambda r: order[r[2]])
+
+
+def title(app):
+    return TITLES.get(app) or tsv_title(app)
+
+
+def focused_app():
+    try:
+        w = json.loads(subprocess.run(["hyprctl", "activewindow", "-j"], capture_output=True, text=True).stdout or "{}")
+    except Exception:
+        return None
+    cls, ttl = (w.get("class") or "").lower(), (w.get("title") or "").lower()
+    for app in apps():
+        if app in cls or ttl.startswith(app) or (app == "zen" and "zen" in cls):
+            return app
+    return None
+
+
+def select(prompt, options):
+    try:
+        out = subprocess.run(["omarchy-menu-select", prompt, *options, "--", "--width", "900", "--height", "560"],
+                             capture_output=True, text=True)
+    except FileNotFoundError:
+        return None
+    return out.stdout.strip() if out.returncode == 0 else None
+
+
+def menu_rows(app, include_app=False):
+    opts = []
+    for keys, desc, section in rows_for(app):
+        label = f"{keys:<18} {desc}"
+        sub = f"{title(app)} · {section}" if include_app else section
+        opts.append(f"{ICONS.get(app, '')}\t{label}\t{sub}" if sub else f"{ICONS.get(app, '')}\t{label}")
+    return opts
+
+
+def show_app(app):
+    opts = [f"\t← All apps\tpick another app"] + menu_rows(app)
+    choice = select(f"{title(app)} keys", opts)
+    if choice and choice.startswith("← All apps"):
+        pick_app()
+
+
+def show_all():
+    opts = []
+    for app in apps():
+        opts += menu_rows(app, include_app=True)
+    select("App keys", opts)
+
+
+def pick_app():
+    opts = [f"󰌌\t{ALL}\tsearch every app at once"]
+    for app in apps():
+        opts.append(f"{ICONS.get(app, '󰌌')}\t{title(app)}\t{len(rows_for(app))} bindings · {app}")
+    choice = select("App keybindings", opts)
+    if not choice:
+        return
+    label = choice.split("\t")[0]
+    if label == ALL:
+        show_all()
+        return
+    for app in apps():
+        if title(app) == label:
+            show_app(app)
+            return
+
+
+def print_app(app):
+    print(f"\n== {title(app)} ==")
+    section = None
+    for keys, desc, sec in rows_for(app):
+        if sec != section:
+            section = sec
+            print(f"\n  [{sec}]")
+        print(f"    {keys:<22} {desc}")
+
+
+def main(argv):
+    if argv and argv[0] in ("-h", "--help"):
+        print(__doc__)
+        return
+    if argv and argv[0] == "--list":
+        for app in apps():
+            print(f"{app:<12} {title(app)}")
+        return
+    if argv and argv[0] in ("--print", "-p"):
+        targets = argv[1:] or apps()
+        for app in targets:
+            print_app(app)
+        return
+    if argv and argv[0] == "--pick":
+        pick_app()
+        return
+    if argv and argv[0] == "--all":
+        show_all()
+        return
+    if argv:
+        app = argv[0].lower()
+        if app not in apps():
+            sys.exit(f"keyguide: no guide for '{app}' (known: {', '.join(apps())})")
+        show_app(app)
+        return
+    app = focused_app()
+    show_app(app) if app else pick_app()
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

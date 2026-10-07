@@ -1,0 +1,22 @@
+# title: mpv
+Space / p	Play / pause	Playback
+← / →	Seek -5 / +5 s	Playback
+↑ / ↓	Seek +60 / -60 s	Playback
+, / .	Previous / next frame	Playback
+[ / ]	Speed down / up	Playback
+Backspace	Reset speed	Playback
+< / >	Previous / next in playlist	Playback
+l	Set / clear A-B loop	Playback
+L	Toggle infinite loop	Playback
+9 / 0	Volume down / up	Audio
+m	Mute	Audio
+#	Cycle audio track	Audio
+v	Toggle subtitles	Subtitles
+j / J	Cycle subtitle track	Subtitles
+z / Z	Subtitle delay -/+ 0.1 s	Subtitles
+f	Toggle fullscreen	Video
+s	Screenshot	Video
+o / P	Show progress / OSD	Interface
+i	Show stats	Interface
+q	Quit	App
+Q	Quit and remember position	App

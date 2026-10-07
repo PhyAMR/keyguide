@@ -1,0 +1,34 @@
+# title: Lazygit
+# Press ? inside lazygit for the full, context-sensitive list.
+1 … 5	Focus status/files/branches/commits/stash	Navigation
+Tab / h / l	Next / previous panel	Navigation
+j / k	Move down / up	Navigation
+[ / ]	Previous / next tab in panel	Navigation
+/	Filter / search the current view	Navigation
+?	Keybinding help for this panel	App
+q	Quit	App
+Space	Stage / unstage file	Files
+a	Stage / unstage all	Files
+Enter	Stage individual hunks / lines	Files
+d	Discard changes	Files
+e	Edit file	Files
+o	Open file	Files
+s	Stash changes	Files
+c	Commit	Commit
+C	Commit with editor	Commit
+A	Amend last commit	Commit
+r	Reword commit	Commits
+s	Squash into commit below	Commits
+f	Fixup into commit below	Commits
+d	Drop commit	Commits
+e	Edit (interactive rebase)	Commits
+Ctrl+j / Ctrl+k	Move commit down / up	Commits
+g	Reset to commit	Commits
+p	Pull	Remote
+P	Push	Remote
+f	Fetch (in files panel: fetch remote)	Remote
+n	New branch	Branches
+Space	Checkout branch	Branches
+M	Merge into current branch	Branches
+r	Rebase onto branch	Branches
+z / Z	Undo / redo	App

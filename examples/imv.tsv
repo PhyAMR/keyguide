@@ -1,0 +1,16 @@
+# title: imv
+← / →	Previous / next image	Navigation
+gg / G	First / last image	Navigation
++ / -	Zoom in / out	View
+a	Actual size	View
+r	Reset zoom & pan	View
+c	Center image	View
+h j k l	Pan	View
+s	Cycle scaling mode	View
+f	Toggle fullscreen	View
+p	Print current path	App
+x	Close current image	App
+d	Toggle overlay	App
+t	Slideshow +1 s	Slideshow
+T	Slideshow -1 s	Slideshow
+q	Quit	App
